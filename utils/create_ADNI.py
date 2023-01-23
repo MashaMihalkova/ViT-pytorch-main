@@ -7,6 +7,25 @@ from tqdm import tqdm_notebook
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+import nibabel as nib
+import skimage.transform as skTrans
+
+
+def load_nifti(file_path, mask=None, z_factor=None, remove_nan=True):
+    """Load a 3D array from a NIFTI file."""
+#     print(file_path)
+    img = nib.load(file_path)
+    struct_arr = np.array(img.get_data())
+    struct_arr = skTrans.resize(struct_arr, (193, 229, 193), order=1, preserve_range=True)
+    # if remove_nan:
+    #     struct_arr = np.nan_to_num(struct_arr)
+    if mask is not None:
+#         struct_arr *= mask
+        struct_arr = struct_arr*mask
+    # if z_factor is not None:
+    #     struct_arr = np.around(zoom(struct_arr, z_factor), 0)
+
+    return struct_arr
 
 class ADNIDataset(Dataset):
     def __init__(self, filenames, labels, mask=None, transform=None):
@@ -30,14 +49,14 @@ class ADNIDataset(Dataset):
         """Return the image as a numpy array and the label."""
         label = self.labels[idx]
 
-        nii_data = utils.load_nifti(self.filenames[idx], mask=self.mask)
+        nii_data = load_nifti(self.filenames[idx], mask=self.mask)
         struct_arr = np.ndarray(nii_data.shape)
-        for slice_Number in range(nii_data.shape[2]):
-            struct_arr[:, :, slice_Number] = nii_data[:, :, slice_Number]
-            plt.imsave(f'data/mni_struct/sl_n{slice_Number}.png', nii_data[:, :, slice_Number])
+        for slice_Number in range(nii_data.shape[0]):
+            struct_arr[slice_Number,:,:] = nii_data[slice_Number,:, :]
+            # plt.imsave(f'data/mni_struct/sl_n{slice_Number}.png', nii_data[slice_Number,:, :])
 
         struct_arr = (struct_arr - self.mean) / (self.std + 1e-10)  # prevent 0 division by adding small factor
-        struct_arr = struct_arr[None]  # add (empty) channel dimension
+        # struct_arr = struct_arr[None]  # add (empty) channel dimension
         struct_arr = torch.FloatTensor(struct_arr)
 
         if self.transform is not None:
@@ -47,7 +66,7 @@ class ADNIDataset(Dataset):
 
     def image_shape(self):
         """The shape of the MRI images."""
-        return utils.load_nifti(self.filenames[0], mask=self.mask).shape
+        return load_nifti(self.filenames[0], mask=self.mask).shape
 
     def fit_normalization(self, num_sample=None, show_progress=False):
         """
@@ -70,7 +89,7 @@ class ADNIDataset(Dataset):
             sampled_filenames = tqdm_notebook(sampled_filenames)
 
         for i, filename in enumerate(sampled_filenames):
-            struct_arr = utils.load_nifti(filename, mask=self.mask)
+            struct_arr = load_nifti(filename, mask=self.mask)
             all_struct_arr[i] = struct_arr
 
         self.mean = all_struct_arr.mean(0)
@@ -81,7 +100,7 @@ class ADNIDataset(Dataset):
         return utils.load_nifti(self.filenames[idx], mask=self.mask)
 
 
-def build_datasets(df, patients_train, patients_val, patients_test, print_stats=False, normalize=True):
+def build_datasets(df, patients_train, patients_val, patients_test, print_stats=False, normalize=False):
     """
     Build PyTorch datasets based on a data table and a patient-wise train-test split.
 

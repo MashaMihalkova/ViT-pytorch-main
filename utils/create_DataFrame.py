@@ -79,7 +79,8 @@ def get_image_filepath(df_row, mode, root_dir=''):
     descr = df_row["Description"].replace(';', '_')
     descr = descr.replace(' ', '_')
     date = pd.to_datetime(df_row["Acq Date"]).strftime('%Y/%m/%d').replace('/', '-')
-    filename = glob.glob(f'{mode}/ADNI/{df_row["Subject"]}/{descr}/{date}*/{df_row["Image Data ID"]}/*')
+    # filename = glob.glob(f'{mode}/ADNI/{df_row["Subject"]}/{descr}/{date}*/{df_row["Image Data ID"]}/*')
+    filename = glob.glob(f'{mode}\\ADNI\\{df_row["Subject"]}\\{descr}\\{date}*\\{df_row["Image Data ID"]}\\*')
     if filename:
         return filename[0]
     return ''

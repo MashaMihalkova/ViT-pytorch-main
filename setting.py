@@ -2,11 +2,11 @@
 settings = {
     "r": 43,
     "model_path": '/media/DISK4/ADNI/weights',
-    "data_path": 'E:/IF/morpho/others_dataset/ADNI',
-    "ADNI_DIR": "E:/IF/morpho/others_dataset/ADNI",
+    "data_path": 'E:\\IF\\morpho\\others_dataset\\ADNI',
+    "ADNI_DIR": "E:\\IF\\morpho\\others_dataset\\ADNI",
 
     "1.5T_table": "ADNI1_Screening_1.5T_1_10_2023.csv",
-    "1.5T_image_dir": "ADNI1 Screening 1.5T",
+    "1.5T_image_dir": "ADNI1Screening 1.5T",
     "1.5T_table_compl": "ADNI1_Complete_1Yr_1.5T_1_10_2023.csv",
     "1.5T_image_dir_compl": "ADNI1 Complete 1Yr 1.5T",
 

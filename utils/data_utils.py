@@ -87,28 +87,31 @@ def get_loader(args):
         df = load_data_table_15T()
 
         r = int(settings['r'])
-        test_subjects_per_class = 30
-        val_subjects_per_class = 18
+        # test_subjects_per_class = 30
+        # val_subjects_per_class = 18
 
         subjects_AD = df[df['Group'] == 'AD']['Subject'].unique()
         subjects_CN = df[df['Group'] == 'CN']['Subject'].unique()
         subjects_CN = [p for p in subjects_CN if p not in subjects_AD]
 
-        patients_AD_train, patients_AD_test = train_test_split(subjects_AD, test_size=test_subjects_per_class,
-                                                               random_state=r)
-        patients_AD_train, patients_AD_val = train_test_split(patients_AD_train, test_size=val_subjects_per_class,
-                                                              random_state=r)
-        patients_CN_train, patients_CN_test = train_test_split(subjects_CN, test_size=test_subjects_per_class,
-                                                               random_state=r)
-        patients_CN_train, patients_CN_val = train_test_split(patients_CN_train, test_size=val_subjects_per_class,
-                                                              random_state=r)
+        # patients_AD_train, patients_AD_test = train_test_split(subjects_AD, test_size=test_subjects_per_class,
+        #                                                        random_state=r)
+        # patients_AD_train, patients_AD_val = train_test_split(patients_AD_train, test_size=val_subjects_per_class,
+        #                                                       random_state=r)
+        # patients_CN_train, patients_CN_test = train_test_split(subjects_CN, test_size=test_subjects_per_class,
+        #                                                        random_state=r)
+        # patients_CN_train, patients_CN_val = train_test_split(patients_CN_train, test_size=val_subjects_per_class,
+        #                                                       random_state=r)
 
-        patients_train = np.concatenate([patients_AD_train, patients_CN_train])
-        patients_test = np.concatenate([patients_AD_test, patients_CN_test])
-        patients_val = np.concatenate([patients_AD_val, patients_CN_val])
+        # patients_train = np.concatenate([patients_AD_train, patients_CN_train])
+        # patients_test = np.concatenate([patients_AD_test, patients_CN_test])
+        # patients_val = np.concatenate([patients_AD_val, patients_CN_val])
+        patients_train = np.concatenate([subjects_AD, subjects_CN])
+        patients_test = np.concatenate([subjects_AD, subjects_CN])
+        patients_val = np.concatenate([subjects_AD, subjects_CN])
 
         train_dataset, val_dataset, test_dataset = build_datasets(df, patients_train, patients_val, patients_test,
-                                                                  normalize=True)
+                                                                  normalize=False)
         # build_datasets()
         train_loader, val_loader, test_loader = build_loaders(train_dataset, val_dataset, test_dataset)
         return train_loader, val_loader, test_loader

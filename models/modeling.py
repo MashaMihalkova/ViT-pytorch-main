@@ -124,7 +124,7 @@ class Mlp(nn.Module):
 class Embeddings(nn.Module):
     """Construct the embeddings from patch, position embeddings.
     """
-    def __init__(self, config, img_size, in_channels=3):
+    def __init__(self, config, img_size, in_channels=1):
         super(Embeddings, self).__init__()
         self.hybrid = None
         img_size = _pair(img_size)
@@ -147,6 +147,10 @@ class Embeddings(nn.Module):
                                        out_channels=config.hidden_size,
                                        kernel_size=patch_size,
                                        stride=patch_size)
+        # self.patch_embeddings_193 = Conv2d(in_channels=193,
+        #                                    out_channels=768,
+        #                                    kernel_size=(16, 16),
+        #                                    stride=(16, 16))
         self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches+1, config.hidden_size))
         self.cls_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
 
@@ -159,6 +163,8 @@ class Embeddings(nn.Module):
         if self.hybrid:
             x = self.hybrid_model(x)
         x = self.patch_embeddings(x)
+        # x = self.patch_embeddings_193(x)
+
         x = x.flatten(2)
         x = x.transpose(-1, -2)
         x = torch.cat((cls_tokens, x), dim=1)
@@ -270,8 +276,16 @@ class Transformer(nn.Module):
         self.encoder = Encoder(config, vis)
 
     def forward(self, input_ids):
-        embedding_output = self.embeddings(input_ids)
-        encoded, attn_weights = self.encoder(embedding_output)
+        encoded_sl = np.ndarray((input_ids.shape[1]))
+        attn_weights_sl = np.ndarray((input_ids.shape[1]))
+        for SLICE in range(input_ids.shape[1]):
+            inp = input_ids[:, SLICE, :, :]
+            inp = inp[:,None,:,:]
+            # embedding_output = self.embeddings(input_ids[:, SLICE, :, :])
+            embedding_output = self.embeddings(inp)
+            encoded, attn_weights = self.encoder(embedding_output)
+            encoded_sl[SLICE].append(encoded)
+            attn_weights_sl[SLICE].append(attn_weights)
         return encoded, attn_weights
 
 

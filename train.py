@@ -22,6 +22,7 @@ from models.modeling import VisionTransformer, CONFIGS
 from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
+import cv2
 
 
 logger = logging.getLogger(__name__)
@@ -160,7 +161,11 @@ def train(args, model):
     args.train_batch_size = args.train_batch_size // args.gradient_accumulation_steps
 
     # Prepare dataset
-    train_loader, test_loader = get_loader(args)
+    if args.dataset == 'custom_alzheimer':
+        train_loader, test_loader = get_loader(args)
+    else:
+        train_loader, val_loader, test_loader = get_loader(args)
+
 
     # Prepare optimizer and scheduler
     optimizer = torch.optim.SGD(model.parameters(),
@@ -207,6 +212,8 @@ def train(args, model):
             batch = tuple(t.to(args.device) for t in batch)
             x, y = batch
             loss = model(x, y)
+
+            # cv2.imwrite()
 
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
