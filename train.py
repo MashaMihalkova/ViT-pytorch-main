@@ -66,7 +66,8 @@ def setup(args):
     config = CONFIGS[args.model_type]
 
     # num_classes = 10 if args.dataset == "cifar10" else 100
-    num_classes = 4 if args.dataset == "custom_alzheimer" else 100 if args.dataset == "cifar100" else 10
+    # num_classes = 4 if args.dataset == "custom_alzheimer" else 100 if args.dataset == "cifar100" else 10
+    num_classes = 4 if args.dataset == "custom_alzheimer" else 100 if args.dataset == "cifar100" else 2 if args.dataset == "ADNI_dataset" else 10
 
     model = VisionTransformer(config, args.img_size, zero_head=True, num_classes=num_classes)
 
@@ -211,7 +212,7 @@ def train(args, model):
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(args.device) for t in batch)
             x, y = batch
-            loss = model(x, y)
+            loss = model(x, kol_sl=5, bs=1, labels=y)
 
             # cv2.imwrite()
 
@@ -282,7 +283,7 @@ def main():
                         help="Total batch size for training.")
     parser.add_argument("--eval_batch_size", default=6, type=int,
                         help="Total batch size for eval.")
-    parser.add_argument("--eval_every", default=6, type=int,
+    parser.add_argument("--eval_every", default=2, type=int,
                         help="Run prediction on validation set every so many steps."
                              "Will always run one evaluation at the end of training.")
 
@@ -290,7 +291,7 @@ def main():
                         help="The initial learning rate for SGD.")
     parser.add_argument("--weight_decay", default=0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--num_steps", default=10000, type=int,
+    parser.add_argument("--num_steps", default=30, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--decay_type", choices=["cosine", "linear"], default="cosine",
                         help="How to decay the learning rate.")

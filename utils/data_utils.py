@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_loader(args):
-    if args.local_rank not in [-1, 0]:
-        torch.distributed.barrier()
+    # if args.local_rank not in [-1, 0]:
+    #     torch.distributed.barrier()
     # for cifar dataset
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop((args.img_size, args.img_size), scale=(0.05, 1.0)),
@@ -113,7 +113,7 @@ def get_loader(args):
         train_dataset, val_dataset, test_dataset = build_datasets(df, patients_train, patients_val, patients_test,
                                                                   normalize=False)
         # build_datasets()
-        train_loader, val_loader, test_loader = build_loaders(train_dataset, val_dataset, test_dataset)
+        train_loader, val_loader, test_loader = build_loaders(train_dataset, val_dataset, test_dataset, args.train_batch_size)
         return train_loader, val_loader, test_loader
 
     if args.local_rank == 0:

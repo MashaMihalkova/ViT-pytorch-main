@@ -136,7 +136,7 @@ class Embeddings(nn.Module):
             self.hybrid = True
         else:
             patch_size = _pair(config.patches["size"])
-            n_patches = (img_size[0] // patch_size[0]) * (img_size[1] // patch_size[1])
+            n_patches = 168 # (img_size[0] // patch_size[0]) * (img_size[1] // patch_size[1])  # 168  # 168
             self.hybrid = False
 
         if self.hybrid:
@@ -269,38 +269,67 @@ class Encoder(nn.Module):
         return encoded, attn_weights
 
 
+
 class Transformer(nn.Module):
     def __init__(self, config, img_size, vis):
         super(Transformer, self).__init__()
         self.embeddings = Embeddings(config, img_size=img_size)
         self.encoder = Encoder(config, vis)
 
-    def forward(self, input_ids):
-        encoded_sl = np.ndarray((input_ids.shape[1]))
-        attn_weights_sl = np.ndarray((input_ids.shape[1]))
-        for SLICE in range(input_ids.shape[1]):
+    def forward(self, input_ids, kol_sl, bs):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # encoded_sl = np.ndarray((input_ids.shape[1]))
+        # encoded_sl = torch.Tensor((input_ids.shape[1]))
+
+        encoded_sl = torch.empty(kol_sl, bs, 169, 768)
+        encoded_sl.to(device)
+
+        # attn_weights_sl = np.ndarray((input_ids.shape[1]))
+        attn_weights_sl = torch.empty(kol_sl, 12, bs, 12, 169, 169)
+        attn_weights_sl.to(device)
+        for ind, SLICE in enumerate(range(60, 65)):
             inp = input_ids[:, SLICE, :, :]
-            inp = inp[:,None,:,:]
+            inp = inp[:, None, :, :]
+
             # embedding_output = self.embeddings(input_ids[:, SLICE, :, :])
             embedding_output = self.embeddings(inp)
             encoded, attn_weights = self.encoder(embedding_output)
-            encoded_sl[SLICE].append(encoded)
-            attn_weights_sl[SLICE].append(attn_weights)
-        return encoded, attn_weights
+            encoded_sl[ind] = encoded
+            # attn_weights_sl[SLICE].append(attn_weights)
+            if attn_weights:
+                attn_weights: list
+                attn_weights: torch.Tensor = torch.stack(attn_weights).squeeze(1)
+                if attn_weights.ndim == 4:
+                    attn_weights = attn_weights.reshape((attn_weights.shape[0], bs, *attn_weights.shape[1:]))
+                attn_weights_sl[ind] = attn_weights
+        return encoded_sl.to(device), attn_weights_sl.to(device)
+    # def forward(self, input_ids):
+    #     embedding_output = self.embeddings(input_ids)
+    #     encoded, attn_weights = self.encoder(embedding_output)
+    #     return encoded, attn_weights
 
 
 class VisionTransformer(nn.Module):
-    def __init__(self, config, img_size=224, num_classes=21843, zero_head=False, vis=False):
+    def __init__(self, config, img_size=224, num_classes=21843, kol_sl=5, bs=3, zero_head=False, vis=False):
         super(VisionTransformer, self).__init__()
         self.num_classes = num_classes
         self.zero_head = zero_head
         self.classifier = config.classifier
 
+        self.seq_conv1x1 = nn.Sequential(
+            # nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Conv2d(in_channels=5, out_channels=1, kernel_size=1, stride=1, padding=0),  #
+            # nn.ReLU(inplace=True)
+        )
         self.transformer = Transformer(config, img_size, vis)
         self.head = Linear(config.hidden_size, num_classes)
 
-    def forward(self, x, labels=None):
-        x, attn_weights = self.transformer(x)
+    def forward(self, x,  kol_sl, bs, labels=None,):
+        x, attn_weights = self.transformer(x, kol_sl, bs)
+        x = torch.swapaxes(x, 0, 1)
+
+        xx = self.seq_conv1x1(x)
+        x = xx.flatten(start_dim=1, end_dim=2)
         logits = self.head(x[:, 0])
 
         if labels is not None:
