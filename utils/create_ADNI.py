@@ -16,6 +16,9 @@ def load_nifti(file_path, mask=None, z_factor=None, remove_nan=True):
 #     print(file_path)
     img = nib.load(file_path)
     struct_arr = np.array(img.get_data())
+    # mid = struct_arr.shape[0] // 2
+    # arr = struct_arr[mid - 3:mid + 3, :, :]
+    # struct_arr = skTrans.resize(arr, (6, 229, 193), order=1, preserve_range=True)
     struct_arr = skTrans.resize(struct_arr, (193, 229, 193), order=1, preserve_range=True)
     # if remove_nan:
     #     struct_arr = np.nan_to_num(struct_arr)

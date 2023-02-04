@@ -23,6 +23,10 @@ from utils.scheduler import WarmupLinearSchedule, WarmupCosineSchedule
 from utils.data_utils import get_loader
 from utils.dist_util import get_world_size
 import cv2
+import wandb
+
+wandb.login()
+wandb.init(project="mri_custom_vit", entity="maria_mikhalkova")
 
 
 logger = logging.getLogger(__name__)
@@ -81,6 +85,7 @@ def setup(args):
     model.to(args.device)
     num_params = count_parameters(model)
 
+
     logger.info("{}".format(config))
     logger.info("Training parameters %s", args)
     logger.info("Total Parameter: \t%2.1fM" % num_params)
@@ -121,7 +126,7 @@ def valid(args, model, writer, test_loader, global_step):
         batch = tuple(t.to(args.device) for t in batch)
         x, y = batch
         with torch.no_grad():
-            logits = model(x)[0]
+            logits = model(x, kol_sl=5, bs=args.eval_batch_size)[0]
 
             eval_loss = loss_fct(logits, y)
             eval_losses.update(eval_loss.item())
@@ -150,6 +155,9 @@ def valid(args, model, writer, test_loader, global_step):
     logger.info("Valid Accuracy: %2.5f" % accuracy)
 
     writer.add_scalar("test/accuracy", scalar_value=accuracy, global_step=global_step)
+    wandb.log({"test/accuracy": accuracy})
+    wandb.log({"test/loss": eval_losses.avg})
+
     return accuracy
 
 
@@ -238,11 +246,15 @@ def train(args, model):
                 epoch_iterator.set_description(
                     "Training (%d / %d Steps) (loss=%2.5f)" % (global_step, t_total, losses.val)
                 )
+                wandb.log({"global_step": global_step})
                 if args.local_rank in [-1, 0]:
                     writer.add_scalar("train/loss", scalar_value=losses.val, global_step=global_step)
                     writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
+                    wandb.log({"train/loss": losses.val})
+                    wandb.log({"train/lr": scheduler.get_lr()[0]})
                 if global_step % args.eval_every == 0 and args.local_rank in [-1, 0]:
                     accuracy = valid(args, model, writer, test_loader, global_step)
+                    wandb.log({"valid/accuracy": accuracy})
                     if best_acc < accuracy:
                         save_model(args, model, accuracy)
                         best_acc = accuracy
@@ -279,9 +291,9 @@ def main():
 
     parser.add_argument("--img_size", default=224, type=int,
                         help="Resolution size")
-    parser.add_argument("--train_batch_size", default=6, type=int,
+    parser.add_argument("--train_batch_size", default=1, type=int,
                         help="Total batch size for training.")
-    parser.add_argument("--eval_batch_size", default=6, type=int,
+    parser.add_argument("--eval_batch_size", default=1, type=int,
                         help="Total batch size for eval.")
     parser.add_argument("--eval_every", default=2, type=int,
                         help="Run prediction on validation set every so many steps."
@@ -338,7 +350,12 @@ def main():
 
     # Set seed
     set_seed(args)
-
+    wandb.config = {
+        "learning_rate": args.learning_rate,
+        "epochs": args.num_steps,
+        "batch_size": args.train_batch_size,
+        "seed": args.seed
+    }
     # Model & Tokenizer Setup
     args, model = setup(args)
 
